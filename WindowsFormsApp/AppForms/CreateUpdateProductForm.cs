@@ -20,6 +20,7 @@ namespace demo_var1.AppForms
         private Product _product;
         private bool addPhoto = false;
         private string newFileName;
+        private string oldFileName;
         public CreateUpdateProductForm()
         {
             InitializeComponent();
@@ -58,6 +59,12 @@ namespace demo_var1.AppForms
             {
                 FillInfo();
                 skuTextBox.ReadOnly = true;
+                
+                if (!string.IsNullOrEmpty(_product.Photo))
+                {
+                    oldFileName = _product.Photo;
+                }
+
             }
         }
 
@@ -110,66 +117,48 @@ namespace demo_var1.AppForms
         {
             openFileDialog1.Filter = "Изображения(*.jpg; *.jpeg)|*.jpg; *.jpeg";
 
-            DialogResult dialogResult = openFileDialog1.ShowDialog();
+            DialogResult toAddPhoto = openFileDialog1.ShowDialog();
 
-            if (dialogResult == DialogResult.OK)
+            if (toAddPhoto == DialogResult.OK)
             {
-                newFileName = SaveFileFromDialog(openFileDialog1.FileName);
+                newFileName = SaveImageFromOpenDialog(openFileDialog1.FileName);
                 photoTextBox.Text = newFileName;
                 addPhoto = true;
             }
         }
-
-        private string SaveFileFromDialog(string sourcePath)
+        private string SaveImageFromOpenDialog(string sourcePath)
         {
             Image originalImage = Image.FromFile(sourcePath);
+            Size newImageSizes = GetNewSizes(originalImage);
 
-            Size newImageSizes = GetNewImageSizes(originalImage);
             Bitmap resizedImage = new Bitmap(originalImage, newImageSizes.Width, newImageSizes.Height);
-            string imageName = Guid.NewGuid().ToString().Substring(0,8) + ".jpg";
-            string savePath = GetImagePath(imageName);
+            string fileName = Guid.NewGuid().ToString().Substring(0,8) + ".jpg";
+            string savePath = GetPath(fileName);
 
             resizedImage.Save(savePath);
 
-            originalImage.Dispose();
             resizedImage.Dispose();
+            originalImage.Dispose();
 
-            return imageName;
+            return fileName;
         }
-        private Size GetNewImageSizes(Image originalImage)
+        private string GetPath(string fileName)
+        {
+            return Path.Combine(Application.StartupPath, "img", fileName);
+        }
+        private Size GetNewSizes(Image originalImage)
         {
             int maxWidth = 300;
             int maxHeight = 200;
 
             float ratioX = (float)maxWidth / originalImage.Width;
-            float ratioY = (float)maxHeight / originalImage.Height;
-            float ratio = Math.Min(ratioX, ratioY);
+            float ratioY = (float)maxHeight/ originalImage.Height;
+            float ratio = Math.Min(ratioY, ratioX);
 
-            int newWidth = (int)(originalImage.Width * ratio);
-            int newHeight = (int)(originalImage.Height * ratio);
+            int newWidth = (int)(ratio * originalImage.Width);
+            int newHeight = (int)(ratio * originalImage.Height);
 
             return new Size(newWidth, newHeight);
-        }
-
-        private string GetImagePath(string fileName)
-        {
-            return Path.Combine(Application.StartupPath, "img", fileName);
-        }
-
-        private void DeleteFile(string fileName)
-        {
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                try
-                {
-                    File.Delete(GetImagePath(fileName));
-                }
-                catch (FileNotFoundException ex)
-                {
-                    MessageBox.Show(ex.Message, "Ошибка удаления файла", 
-                        MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
         }
 
         private void buttonBack_Click(object sender, EventArgs e)
@@ -178,22 +167,39 @@ namespace demo_var1.AppForms
             {
                 DeleteFile(newFileName);
             }
-            Close();
+            DialogResult = DialogResult.Cancel;
+        }
+
+        private void DeleteFile(string fileName)
+        {
+            if (!string.IsNullOrEmpty(fileName))
+            {
+                try
+                {
+                    File.Delete(GetPath(fileName));
+                }
+                catch (FileNotFoundException ex)
+                {
+                    MessageBox.Show("ошибка удаления файла", "ошибка", 
+                        MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
         }
 
         private void buttonSave_Click(object sender, EventArgs e)
         {
             if (!ValidateData())
             {
-                MessageBox.Show("Поля не должны быть пустыми", "Ошибка", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("поля не могут быть пустыми", "ошибка", 
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
             try
             {
                 using (var context = new ContextDB())
                 {
-                    string oldPhoto = photoTextBox.Text;
+
                     if (_product.IsNew())
                     {
                         FillModelFields(_product);
@@ -201,18 +207,19 @@ namespace demo_var1.AppForms
                     }
                     else
                     {
-                        // Редактирование - загружаем из БД и обновляем
-                        var productFromDb = context.Products.Find(_product.IdProduct);
-                        if (productFromDb != null)
+                        var productFromDB = context.Products.Find(_product.IdProduct);
+
+                        if (productFromDB != null)
                         {
-                            FillModelFields(productFromDb);
+                            FillModelFields(productFromDB);
+                            if (addPhoto == true && !string.IsNullOrEmpty(oldFileName))
+                            {
+                                DeleteFile(oldFileName);
+                            }
                         }
                     }
                     context.SaveChanges();
-                    if (addPhoto == true && !string.IsNullOrEmpty(oldPhoto))
-                    {
-                        DeleteFile(oldPhoto);
-                    }
+
                     MessageBox.Show("Успех", "Успех", 
                         MessageBoxButtons.OK, MessageBoxIcon.Information);
                     DialogResult = DialogResult.OK;
@@ -224,13 +231,11 @@ namespace demo_var1.AppForms
                 {
                     DeleteFile(newFileName);
                 }
-                MessageBox.Show(ex.Message, "Ошибка сохранения", 
+                MessageBox.Show(ex.Message, "ошибка сохранения", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.Cancel;
             }
         }
-
-        
 
         private bool ValidateData()
         {
@@ -238,46 +243,43 @@ namespace demo_var1.AppForms
             {
                 return false;
             }
-
             return true;
         }
 
         private void buttonDelete_Click(object sender, EventArgs e)
         {
-            DialogResult toBeDeleted = MessageBox.Show("Удалить?", "Удалить?", 
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            DialogResult toBeDeleted = MessageBox.Show("удалить?", "удалить?", 
+                MessageBoxButtons.YesNo,MessageBoxIcon.Question);
 
             if (toBeDeleted == DialogResult.No)
             {
                 return;
             }
-
             try
             {
                 using (var context = new ContextDB())
                 {
-                    Product product = context.Products.Find(_product.IdProduct);
+                    var productToDelete = context.Products.Find(_product.IdProduct);
 
-                    if (product != null)
+                    if (productToDelete != null)
                     {
-                        string oldPhoto = photoTextBox.Text;
 
-                        context.Products.Remove(product);
+                        context.Products.Remove(productToDelete);
                         context.SaveChanges();
 
+                        if (!string.IsNullOrEmpty(oldFileName))
+                        {
+                            DeleteFile(oldFileName);
+                        }
                         if (addPhoto == true && !string.IsNullOrEmpty(newFileName))
                         {
                             DeleteFile(newFileName);
-                        }
-                        if (!string.IsNullOrEmpty(oldPhoto))
-                        {
-                            DeleteFile(oldPhoto);
                         }
                         MessageBox.Show("Успех", "Успех", 
                             MessageBoxButtons.OK, MessageBoxIcon.Information);
                         DialogResult = DialogResult.OK;
                     }
-                }  
+                }
             }
             catch (Exception ex)
             {
@@ -285,7 +287,7 @@ namespace demo_var1.AppForms
                 {
                     DeleteFile(newFileName);
                 }
-                MessageBox.Show("Товар находится в заказе. Его нельзя удалить", "Ошибка сохранения", 
+                MessageBox.Show(ex.Message, "ошибка удаления", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.Cancel;
             }
