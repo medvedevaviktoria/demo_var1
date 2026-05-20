@@ -102,6 +102,12 @@ namespace demo_var1.AppForms
         public void RefreshList()
         {
             ClearList();
+            
+            foreach (var entry in Program.contextDB.ChangeTracker.Entries())
+            {
+                entry.Reload();
+            }
+
             SelectList();
             ShowList();
         }
@@ -116,50 +122,41 @@ namespace demo_var1.AppForms
 
         private void SelectList()
         {
-            using (var context = new ContextDB())
+
+            IQueryable<Product> tmpProducts = Program.contextDB.Products;
+
+            string search = textBoxSearch.Text.Trim();
+
+            if (!String.IsNullOrEmpty(search))
             {
-                IQueryable<Product> tmpProducts = context.Products.Include(p => p.Category)           // ← обязательно
-            .Include(p => p.ProductName)        // ← обязательно
-            .Include(p => p.Manufacturer)       // ← обязательно
-            .Include(p => p.Supplier)           // ← обязательно
-            .Include(p => p.UnitOfMeasurment);  // ← обязательно;
-
-                string search = textBoxSearch.Text.Trim();
-
-                if (!String.IsNullOrEmpty(search))
-                {
-                    tmpProducts = tmpProducts.Where(obj => DbFunctions.Like(obj.Category.CategoryName, "%" + search + "%")
-                                                        || DbFunctions.Like(obj.ProductName.ProductNameName, "%" + search + "%")
-                                                        || DbFunctions.Like(obj.Description, "%" + search + "%")
-                                                        || DbFunctions.Like(obj.Manufacturer.ManufacturerName, "%" + search + "%")
-                                                        || DbFunctions.Like(obj.Supplier.SupplierName, "%" + search + "%")
-                                                        || DbFunctions.Like(obj.UnitOfMeasurment.UnitOfMeasurmentName, "%" + search + "%"));
-                }
-
-
-                bool lessPrice = radioButtonLess.Checked;
-
-                if (lessPrice == false)
-                {
-                    tmpProducts = tmpProducts.OrderBy(p => p.Price);
-                }
-                else
-                {
-                    tmpProducts = tmpProducts.OrderByDescending(p => p.Price);
-                }
-
-                Category selectedCategory = (Category)comboBoxCategory.SelectedItem;
-                if (selectedCategory != null && selectedCategory.IdCategory > 0)
-                {
-                    tmpProducts = tmpProducts.Where(p => p.CategoryId == selectedCategory.IdCategory);
-                }
-
-
-
-
-                _products = tmpProducts.ToList();
+                tmpProducts = tmpProducts.Where(obj => DbFunctions.Like(obj.Category.CategoryName, "%" + search + "%")
+                                                    || DbFunctions.Like(obj.ProductName.ProductNameName, "%" + search + "%")
+                                                    || DbFunctions.Like(obj.Description, "%" + search + "%")
+                                                    || DbFunctions.Like(obj.Manufacturer.ManufacturerName, "%" + search + "%")
+                                                    || DbFunctions.Like(obj.Supplier.SupplierName, "%" + search + "%")
+                                                    || DbFunctions.Like(obj.UnitOfMeasurment.UnitOfMeasurmentName, "%" + search + "%"));
             }
-                
+
+
+            bool lessPrice = radioButtonLess.Checked;
+
+            if (lessPrice == false)
+            {
+                tmpProducts = tmpProducts.OrderBy(p => p.Price);
+            }
+            else
+            {
+                tmpProducts = tmpProducts.OrderByDescending(p => p.Price);
+            }
+
+            Category selectedCategory = (Category)comboBoxCategory.SelectedItem;
+            if (selectedCategory != null && selectedCategory.IdCategory > 0)
+            {
+                tmpProducts = tmpProducts.Where(p => p.CategoryId == selectedCategory.IdCategory);
+            }
+
+            _products = tmpProducts.ToList();
+
         }
 
         private void ClearList()
