@@ -114,26 +114,25 @@ namespace demo_var1.AppForms
 
         private void buttonAddPhoto_Click(object sender, EventArgs e)
         {
-            openFileDialog1.Filter = "Изображения(*.jpg; *.jpeg)|*.jpg; *.jpeg";
+            openFileDialog1.Filter = "Изображение(*.jpg;*.jpeg)|*.jpg;*.jpeg";
+            DialogResult toAddPhoto = openFileDialog1.ShowDialog();
 
-            DialogResult toBeAddPhoto = openFileDialog1.ShowDialog();
-
-            if (toBeAddPhoto == DialogResult.OK)
+            if (toAddPhoto == DialogResult.OK)
             {
-                newFileName = SaveImageFromOpenFileDialog(openFileDialog1.FileName);
+                newFileName = SaveFileFromOFD(openFileDialog1.FileName);
                 photoTextBox.Text = newFileName;
                 addPhoto = true;
             }
         }
 
-        private string SaveImageFromOpenFileDialog(string sourcePath)
+        private string SaveFileFromOFD(string sourcePath)
         {
             Image originalImage = Image.FromFile(sourcePath);
-            Size newImageSizes = GetNewImageSize(originalImage);
 
+            Size newImageSizes = GetNewSizes(originalImage);
             Bitmap resizedImage = new Bitmap(originalImage, newImageSizes.Width, newImageSizes.Height);
             string fileName = Guid.NewGuid().ToString().Substring(0,8) + ".jpg";
-            string savePath = GetImagePath(fileName);
+            string savePath = GetSaveImagePath(fileName);
 
             resizedImage.Save(savePath);
 
@@ -143,23 +142,23 @@ namespace demo_var1.AppForms
             return fileName;
         }
 
-        private string GetImagePath(string fileName)
+        private string GetSaveImagePath(string fileName)
         {
             return Path.Combine(Application.StartupPath, "img", fileName);
         }
 
-        private Size GetNewImageSize(Image originalImage)
+        private Size GetNewSizes(Image originalImage)
         {
             int maxWidth = 300;
             int maxHeight = 200;
 
-            float ratioX = (float)maxWidth/originalImage.Width;
-            float ratioY = (float)maxWidth/originalImage.Width;
+            float ratioX = (float)maxWidth /originalImage.Width;
+            float ratioY = (float)maxHeight/originalImage.Height;
             float ratio = Math.Min(ratioY, ratioX);
 
             int newWidth = (int)(ratio * originalImage.Width);
             int newHeight = (int)(ratio * originalImage.Height);
-            
+
             return new Size(newWidth, newHeight);
         }
 
@@ -178,11 +177,11 @@ namespace demo_var1.AppForms
             {
                 try
                 {
-                    File.Delete(fileName);
+                    File.Delete(GetSaveImagePath(fileName));
                 }
                 catch (FileNotFoundException ex)
                 {
-                    MessageBox.Show("Ошибка", "ошибка", MessageBoxButtons.OK);
+                    MessageBox.Show("ошибка", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -191,7 +190,7 @@ namespace demo_var1.AppForms
         {
             if (!ValidateData())
             {
-                MessageBox.Show("поля должны быть заполнены", "ошибка", MessageBoxButtons.OK);
+                MessageBox.Show("поля", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
@@ -199,7 +198,6 @@ namespace demo_var1.AppForms
             {
                 using (var context = new ContextDB())
                 {
-
                     if (_product.IsNew())
                     {
                         FillModelFields(_product);
@@ -208,10 +206,10 @@ namespace demo_var1.AppForms
                     else
                     {
                         var productFromDB = context.Products.Find(_product.IdProduct);
-
                         if (productFromDB != null)
                         {
                             FillModelFields(productFromDB);
+
                             if (addPhoto == true && !string.IsNullOrEmpty(oldFileName))
                             {
                                 DeleteFile(oldFileName);
@@ -219,7 +217,7 @@ namespace demo_var1.AppForms
                         }
                     }
                     context.SaveChanges();
-                    MessageBox.Show("кул", "кул", MessageBoxButtons.OK);
+                    MessageBox.Show("кул", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     DialogResult = DialogResult.OK;
                 }
             }
@@ -229,7 +227,7 @@ namespace demo_var1.AppForms
                 {
                     DeleteFile(newFileName);
                 }
-                MessageBox.Show("ошибка", "ошибка", MessageBoxButtons.OK);
+                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.Cancel;
             }
         }
@@ -272,9 +270,14 @@ namespace demo_var1.AppForms
                             DeleteFile(newFileName);
                         }
                     }
-                    MessageBox.Show("кул", "кул", MessageBoxButtons.OK);
+
+
+                    context.SaveChanges();
+                    MessageBox.Show("кул", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     DialogResult = DialogResult.OK;
                 }
+                MessageBox.Show("кул", "", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DialogResult = DialogResult.OK;
             }
             catch (Exception ex)
             {
@@ -282,7 +285,7 @@ namespace demo_var1.AppForms
                 {
                     DeleteFile(newFileName);
                 }
-                MessageBox.Show("ошибка", "ошибка", MessageBoxButtons.OK);
+                MessageBox.Show(ex.Message, "", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 DialogResult = DialogResult.Cancel;
             }
         }

@@ -73,11 +73,11 @@ namespace demo_var1.AppControls
             Image img;
             try
             {
-                img = new Bitmap(Image.FromFile(Path.Combine(Application.StartupPath, "img", _product.Photo)));
+                img = new Bitmap(Image.FromFile(Path.Combine(Application.StartupPath, "img", "picture.png"));
             }
-            catch (FileNotFoundException)
+            catch (FileNotFoundException ex)
             {
-                img = Image.FromFile(Path.Combine(Application.StartupPath, "img", "picture.png"));
+                img = Image.FromFile(Path.Combine(Application.StartupPath, "img", "picture.png");
             }
             return img;
         }
